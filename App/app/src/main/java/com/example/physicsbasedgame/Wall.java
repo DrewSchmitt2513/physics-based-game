@@ -2,11 +2,12 @@ package com.example.physicsbasedgame;
 
 import android.graphics.RectF;
 
-public class Player extends RectF{
-    public Player() {
+public class Wall extends RectF {
+
+    public Wall() {
         super();
     }
-    public Player(float left, float top, float right, float bottom) {
+    public Wall(float left, float top, float right, float bottom) {
         super(left, top, right, bottom);
     }
 }

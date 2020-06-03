@@ -4,39 +4,37 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.util.Log;
-import android.view.GestureDetector;
-import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.widget.Toast;
 
-import androidx.core.view.GestureDetectorCompat;
+import java.util.ArrayList;
+import java.util.Random;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.ThreadLocalRandom;
 
-class GameView extends SurfaceView implements SurfaceHolder.Callback, GestureDetector.OnGestureListener {
+class GameView extends SurfaceView implements SurfaceHolder.Callback {
 
-    private static final String DEBUG_TAG = "Gestures";
+    private static final int MAX_SPEED = 1000;
+    private static final float SPEED_ACCELERATOR = .5f;
+    private static final float SPEED = 3;
 
     private GameThread thread;
     private Player player;
-    private Paint paint;
-    private GestureDetectorCompat detectorCompat;
+    private Paint paintPlayer;
+    private Paint paintWall;
+    private ArrayList<Wall> walls;
+    private Timer timer;
+    private Random random;
 
     private long left;
     private long right;
     private long top;
     private long bottom;
 
-    private boolean hitBottom = false;
+    private boolean hitWall = false;
     private boolean hitTop = false;
     private boolean leftRight = true;
-
-    private long deltaX = 25;
-    private long deltaY = 600;
-
-    private final double deceleration = -.5;
-
-    private final double gravity = -.98;
 
     public GameView(Context context) {
         super(context);
@@ -54,18 +52,34 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, GestureDet
         bottom = 100;
 
         player = new Player(left, top, right, bottom);
-        paint = new Paint();
+        paintPlayer = new Paint();
+        paintWall = new Paint();
 
-        detectorCompat = new GestureDetectorCompat(getContext(), this);
+        walls = new ArrayList<>();
+        random = new Random();
+
+        TimerTask task = new TimerTask() {
+            @Override
+            public void run() {
+                createWall();
+            }
+        };
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(task, 0,
+                1200);
     }
 
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
-        top = getBottom() - 100;
-        bottom = getBottom() - 50;
+        thread.setRunning(true);
+        thread.start();
+
+        top = getBottom() - 300;
+        bottom = getBottom() - 250;
         left = 500;
         right = 550;
         player.set(left, top, right, bottom);
+
     }
 
     @Override
@@ -95,126 +109,52 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, GestureDet
         }
     }
 
-
-
     @Override
-    public void draw(Canvas canvas) {
+    public void draw(final Canvas canvas) {
         super.draw(canvas);
         if (canvas != null) {
-
             canvas.drawColor(Color.BLACK);
 
-            if (hitBottom) paint.setColor(Color.BLUE);
-            else paint.setColor(Color.RED);
+            paintWall.setColor(Color.GREEN);
 
+            if (hitWall) paintPlayer.setColor(Color.BLUE);
+            else paintPlayer.setColor(Color.RED);
 
-            canvas.drawRect(player, paint);
-        }
-    }
+            canvas.drawRect(player, paintPlayer);
 
-    @Override
-    public void onDraw(Canvas canvas) {
-        if (!hitBottom) {
-
-            if (player.right >= getRight()) leftRight = false;
-            else if (player.left <= getLeft()) leftRight = true;
-            else if (player.bottom >= getBottom()) hitBottom = true;
-            else if (player.top <= getTop()) hitTop = true;
-
-            paint.setColor(Color.YELLOW);
-            if (leftRight) {
-                if (!hitTop) goUpRight();
-                else goDownRight();
-            } else {
-                if (!hitTop) goUpLeft();
-                else goDownLeft();
+            for (Wall w : walls) {
+                canvas.drawRect(w, paintWall);
             }
-
-            canvas.drawRect(player, paint);
-        } else {
-            player.offsetTo(left, getBottom() - 50);
-            Paint paint = new Paint();
-            paint.setColor(Color.BLUE);
-            canvas.drawRect(player, paint);
         }
     }
 
-    public void goUpRight() {
-        left += deltaX + (deltaX * deceleration);
-        top -= deltaY + (deltaY * gravity);
-
-        player.offsetTo(left, top);
-    }
-
-    public void goUpLeft() {
-        left -= deltaX + (deltaX * deceleration);
-        top -= deltaY + (deltaY * gravity);
-
-        player.offsetTo(left, top);
-    }
-
-    public void goDownLeft() {
-        left -= deltaX + (deltaX * deceleration);
-        top += deltaY + (deltaY * gravity);
-
-        player.offsetTo(left, top);
-    }
-
-    public void goDownRight() {
-        left += deltaX + (deltaX * deceleration);
-        top += deltaY + (deltaY * gravity);
-
-        player.offsetTo(left, top);
-    }
-
-
-
-
     @Override
-    public boolean onTouchEvent(MotionEvent e) {
-        if (this.detectorCompat.onTouchEvent(e)) {
-            return true;
-        }
-        return super.onTouchEvent(e);
-    }
+    public void onDraw(final Canvas canvas) {
 
-    @Override
-    public boolean onDown(MotionEvent event) {
-        Log.d(DEBUG_TAG,"onDown: " + event.toString());
-        return true;
-    }
-
-    @Override
-    public void onShowPress(MotionEvent e) {
-
-    }
-
-    @Override
-    public boolean onSingleTapUp(MotionEvent e) {
-        return false;
-    }
-
-    @Override
-    public boolean onFling(MotionEvent event1, MotionEvent event2,
-                           float velocityX, float velocityY) {
-        Log.d(DEBUG_TAG, "onFling: " + event1.toString() + event2.toString());
-
-        if (player.contains(event1.getX(), event1.getY())) {
-            Toast.makeText(getContext(), "TOUCHED", Toast.LENGTH_SHORT).show();
+        for (Wall w : walls) {
+            w.offsetTo(w.left, w.top + SPEED + SPEED * SPEED_ACCELERATOR);
+            canvas.drawRect(w, paintWall);
         }
 
-        return true;
+        if (!hitWall) {
+
+            paintPlayer.setColor(Color.YELLOW);
+            canvas.drawRect(player, paintPlayer);
+        }
     }
 
-    @Override
-    public void onLongPress(MotionEvent event) {
-        Log.d(DEBUG_TAG, "onLongPress: " + event.toString());
-    }
-
-    @Override
-    public boolean onScroll(MotionEvent event1, MotionEvent event2, float distanceX,
-                            float distanceY) {
-        Log.d(DEBUG_TAG, "onScroll: " + event1.toString() + event2.toString());
-        return true;
+    public void createWall() {
+        int i = ThreadLocalRandom.current().nextInt(100);
+        if (i % 2 == 0) {
+            i = ThreadLocalRandom.current().nextInt(200, 700);
+            Wall w = new Wall(0, 0, i, 25);
+            walls.add(w);
+        }
+        else {
+            i = ThreadLocalRandom.current().nextInt(200, 700);
+            Wall w = new Wall(getRight() - i, 0, getRight(), 25);
+            walls.add(w);
+        }
+        System.out.println(walls.size());
     }
 }
