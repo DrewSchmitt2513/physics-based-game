@@ -26,6 +26,7 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback {
     private ArrayList<Wall> walls;
     private Timer timer;
     private Random random;
+    private AccelerometerHandler accelerometerHandler;
 
     private long left;
     private long right;
@@ -67,6 +68,8 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback {
         Timer timer = new Timer();
         timer.scheduleAtFixedRate(task, 0,
                 1200);
+
+        accelerometerHandler = new AccelerometerHandler(getContext());
     }
 
     @Override
