@@ -4,39 +4,49 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-
-import com.example.physicsbasedgame.handlers.AccelerometerHandler;
 
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ThreadLocalRandom;
 
-class GameView extends SurfaceView implements SurfaceHolder.Callback {
+class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEventListener {
 
     private static final float MAX_WALL_SPEED = 20;
     private static final float WALL_SPEED_ACCELERATOR = .0005f;
     private static final float PLAYER_MOVE_SPEED = 20;
     private static final float MAX_PLAYER_VELOCITY = 80; //I put a random number in here... I need to play around with numbers to figure it out. Might not be needed.
 
+    /**
+     * Base speed of all of the Wall objects
+     */
     private float wallSpeed = 3;
+
+    /**
+     * Value used for computing the corrected player
+     * move speed to give it a smooth animation
+     */
     private float time = 0.667f;
     private float velocity = 0.0f;
     private float distanceTravelled = 0.0f;
+    private float xAccel;
     private int rate = 1200;
+    private long left;
+    private long right;
 
     private GameThread thread;
     private Player player;
     private Paint paintPlayer;
     private Paint paintWall;
     private ArrayList<Wall> walls;
-    private AccelerometerHandler accelerometerHandler;
-
-
-    private long left;
-    private long right;
+    private SensorManager sensorManager;
+    private Sensor sensor;
 
     private boolean hitWall = false;
 
@@ -49,7 +59,10 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback {
         setFocusable(true);
         this.postInvalidate();
 
-        player = new Player();
+        sensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
+        sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_FASTEST, SensorManager.SENSOR_STATUS_ACCURACY_HIGH);
+
         left = 50;
         right = 100;
 
@@ -71,7 +84,6 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback {
         Thread wallThread = new Thread() {
             @Override
             public void run() {
-                accelerometerHandler = new AccelerometerHandler(getContext());
 
                 //TODO: As the walls speed up, we need to find an efficient way to cancel and reschedule the timer task to make sure that the distance between walls does not grow significantly
                 timer.scheduleAtFixedRate(task, 0,
@@ -177,8 +189,7 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback {
                     w.offsetTo(w.left, w.top + wallSpeed);
                 }
 
-                float x = accelerometerHandler.getxAccel();
-                velocity += x * time * PLAYER_MOVE_SPEED;
+                velocity += xAccel * time * PLAYER_MOVE_SPEED;
                 distanceTravelled = (velocity / 2) * time;
 
                 player.offsetTo(left - distanceTravelled, getBottom() - 300);
@@ -196,6 +207,16 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback {
         if (walls.size() > 8) {
             walls.remove(0);
         }
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        xAccel = event.values[0];
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+
     }
 
     //TODO: MIGHT NOT NEED.
