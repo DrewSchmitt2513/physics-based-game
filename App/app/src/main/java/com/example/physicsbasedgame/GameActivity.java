@@ -7,6 +7,8 @@ import android.view.WindowManager;
 
 public class GameActivity extends Activity {
 
+    private GameView gameView;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
@@ -14,8 +16,19 @@ public class GameActivity extends Activity {
         this.requestWindowFeature(Window.FEATURE_NO_TITLE);
         super.onCreate(savedInstanceState);
 
-        GameView g = new GameView(this);
+        gameView = new GameView(this);
 
-        setContentView(g);
+        setContentView(gameView);
     }
+
+//    @Override
+//    protected void onResume() {
+//        super.onResume();
+//         gameView.resume();
+//    }
+//    @Override
+//    protected void onPause() {
+//        super.onPause();
+//         gameView.pause();
+//    }
 }

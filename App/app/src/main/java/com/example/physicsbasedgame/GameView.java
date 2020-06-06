@@ -59,22 +59,23 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback {
 
         walls = new ArrayList<>();
 
-        TimerTask task = new TimerTask() {
+        final TimerTask task = new TimerTask() {
             @Override
             public void run() {
                 createWall();
+                destroyWall();
             }
         };
-        Timer timer = new Timer();
-
-        //TODO: As the walls speed up, we need to find an efficient way to cancel and reschedule the timer task to make sure that the distance between walls does not grow significantly
-        timer.scheduleAtFixedRate(task, 0,
-                rate);
+        final Timer timer = new Timer();
 
         Thread wallThread = new Thread() {
             @Override
             public void run() {
                 accelerometerHandler = new AccelerometerHandler(getContext());
+
+                //TODO: As the walls speed up, we need to find an efficient way to cancel and reschedule the timer task to make sure that the distance between walls does not grow significantly
+                timer.scheduleAtFixedRate(task, 0,
+                        rate);
             }
         };
         wallThread.run();
@@ -120,7 +121,7 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback {
     }
 
     @Override
-    public void draw(final Canvas canvas) {
+    public void draw(Canvas canvas) {
         super.draw(canvas);
         if (canvas != null) {
             canvas.drawColor(Color.BLACK);
@@ -130,69 +131,14 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback {
             if (hitWall) paintPlayer.setColor(Color.BLUE);
             else paintPlayer.setColor(Color.RED);
 
-            canvas.drawRect(player, paintPlayer);
-
-            for (Wall w : walls) {
-                canvas.drawRect(w, paintWall);
+            if (!hitWall) {
+                updatePositions();
+                canvas.drawRect(player, paintPlayer);
+                for (Wall w : walls) {
+                    canvas.drawRect(w, paintWall);
+                }
             }
         }
-    }
-
-    @Override
-    public void onDraw(final Canvas canvas) {
-
-        if (wallSpeed > MAX_WALL_SPEED) {
-            wallSpeed = MAX_WALL_SPEED;
-        } else {
-            wallSpeed += wallSpeed * WALL_SPEED_ACCELERATOR;
-        }
-
-        for (Wall w : walls) {
-            w.offsetTo(w.left, w.top + wallSpeed);
-            canvas.drawRect(w, paintWall);
-        }
-
-        if (!hitWall) {
-            paintPlayer.setColor(Color.YELLOW);
-            movePlayer();
-            canvas.drawRect(player, paintPlayer);
-        }
-    }
-
-    /**
-     * With the help of the accelerometer handler,
-     * gets the horizontal acceleration and converts it
-     * to a value we can use to make the movement smooth
-     * using the time value (grabbed from stackoverflow)
-     */
-    public void movePlayer() {
-
-        final Thread t = new Thread() {
-            @Override
-            public void run() {
-                float x = accelerometerHandler.getxAccel();
-                velocity += x * time * PLAYER_MOVE_SPEED;
-                distanceTravelled = (velocity / 2) * time;
-
-//                if (left <= getLeft()) {
-//                    distanceTravelled = 0;
-//                    player.offsetTo(getLeft(), getBottom() - 300);
-//                }
-//                else if (right >= getRight()) {
-//                    distanceTravelled = 0;
-//                    player.offsetTo(getRight() - 50, getBottom() - 300);
-//                }
-//                else {
-                    player.offsetTo(left - distanceTravelled, getBottom() - 300);
-//                }
-            }
-        };
-        t.run();
-//        try {
-//            t.join();
-//        } catch (InterruptedException e) {
-//            e.printStackTrace();
-//        }
     }
 
     /**
@@ -210,7 +156,36 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback {
             Wall w = new Wall(getRight() - i, 0, getRight(), 25);
             walls.add(w);
         }
-        //destroyWall();
+    }
+
+    /**
+     * Updates the positions of the walls and the players
+     * without drawing them immediately. Called by draw
+     */
+    public void updatePositions() {
+
+        Thread t = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                if (wallSpeed > MAX_WALL_SPEED) {
+                    wallSpeed = MAX_WALL_SPEED;
+                } else {
+                    wallSpeed += wallSpeed * WALL_SPEED_ACCELERATOR;
+                }
+
+                for (Wall w : walls) {
+                    w.offsetTo(w.left, w.top + wallSpeed);
+                }
+
+                float x = accelerometerHandler.getxAccel();
+                velocity += x * time * PLAYER_MOVE_SPEED;
+                distanceTravelled = (velocity / 2) * time;
+
+                player.offsetTo(left - distanceTravelled, getBottom() - 300);
+            }
+        });
+        t.run();
+
     }
 
     /**
@@ -219,7 +194,16 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback {
      */
     public void destroyWall() {
         if (walls.size() > 8) {
-            walls = new ArrayList<>(walls.subList(40, 49));
+            walls.remove(0);
         }
     }
+
+    //TODO: MIGHT NOT NEED.
+    //IDEA: USE SURFACEDESTROYED METHOD TO STORE VITAL DATA
+//    public void pause() {
+//        if (!thread.isInterrupted()) thread.interrupt();
+//    }
+//    public void resume() {
+//        if (thread.isInterrupted()) thread.start();
+//    }
 }
