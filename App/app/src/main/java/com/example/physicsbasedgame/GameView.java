@@ -1,6 +1,7 @@
 package com.example.physicsbasedgame;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -8,6 +9,7 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
@@ -21,7 +23,7 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
     private static final float MAX_WALL_SPEED = 20;
     private static final float WALL_SPEED_ACCELERATOR = .0005f;
     private static final float PLAYER_MOVE_SPEED = 20;
-    private static final float MAX_PLAYER_VELOCITY = 80; //I put a random number in here... I need to play around with numbers to figure it out. Might not be needed.
+    private static final float MAX_PLAYER_VELOCITY = 15; //I put a random number in here... I need to play around with numbers to figure it out. Might not be needed.
 
     /**
      * Base speed of all of the Wall objects
@@ -33,20 +35,24 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
      * move speed to give it a smooth animation
      */
     private float time = 0.667f;
-    private float velocity = 0.0f;
-    private float distanceTravelled = 0.0f;
-    private float xAccel;
+    private float xVelocity, yVelocity, distanceTravelled, xAccel, yAccel = 0.0f;
+
+    private long playerPos;
+
     private int rate = 1200;
-    private long left;
-    private long right;
+
 
     private GameThread thread;
+    private Thread positionsThread;
+    private Thread wallThread;
+
     private Player player;
     private Paint paintPlayer;
     private Paint paintWall;
     private ArrayList<Wall> walls;
     private SensorManager sensorManager;
     private Sensor sensor;
+    private Timer timer;
 
     private boolean hitWall = false;
 
@@ -61,16 +67,21 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
 
         sensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
         sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_FASTEST, SensorManager.SENSOR_STATUS_ACCURACY_HIGH);
+        sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_GAME, SensorManager.SENSOR_STATUS_ACCURACY_HIGH);
 
-        left = 50;
-        right = 100;
-
-        player = new Player(left, 0, right, 0);
         paintPlayer = new Paint();
         paintWall = new Paint();
 
         walls = new ArrayList<>();
+    }
+
+    @Override
+    public void surfaceCreated(SurfaceHolder holder) {
+        thread.setRunning(true);
+        thread.start();
+
+        playerPos = 500;
+        player = new Player(playerPos, getBottom() - 300, playerPos + 50, getBottom() - 250);
 
         final TimerTask task = new TimerTask() {
             @Override
@@ -79,9 +90,9 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
                 destroyWall();
             }
         };
-        final Timer timer = new Timer();
+        timer = new Timer();
 
-        Thread wallThread = new Thread() {
+        wallThread = new Thread() {
             @Override
             public void run() {
 
@@ -95,17 +106,6 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
     }
 
     @Override
-    public void surfaceCreated(SurfaceHolder holder) {
-        thread.setRunning(true);
-        thread.start();
-
-        left = 500;
-        right = 550;
-        player.set(left, getBottom() - 300, right, getBottom() - 250);
-
-    }
-
-    @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
 
     }
@@ -113,7 +113,8 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
     /**
      * Ends the thread and therefore the game. It can
      * take multiple attempts to take down a thread, so
-     * we've been advised to put it into this loop.
+     * we've been advised to put it into this loop from a
+     * tutorial.
      *
      * @param holder the surface holder of the canvas
      */
@@ -130,6 +131,7 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
             }
             retry = false;
         }
+        timer.cancel();
     }
 
     @Override
@@ -158,9 +160,12 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
      * on randomly selected sides
      */
     public void createWall() {
-        int i = ThreadLocalRandom.current().nextInt(100);
-        if (i % 2 == 0) {
-            i = ThreadLocalRandom.current().nextInt(200, 700);
+        int i = ThreadLocalRandom.current().nextInt(10000);
+
+        Log.d("RANDOM", i + "");
+
+        if (i % 8 == 0 || i % 7 == 0 || i % 3 == 0) {
+            i = ThreadLocalRandom.current().nextInt(250, 650);
             Wall w = new Wall(0, 0, i, 25);
             walls.add(w);
         } else {
@@ -176,7 +181,7 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
      */
     public void updatePositions() {
 
-        Thread t = new Thread(new Runnable() {
+        positionsThread = new Thread(new Runnable() {
             @Override
             public void run() {
                 if (wallSpeed > MAX_WALL_SPEED) {
@@ -185,18 +190,43 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
                     wallSpeed += wallSpeed * WALL_SPEED_ACCELERATOR;
                 }
 
-                for (Wall w : walls) {
-                    w.offsetTo(w.left, w.top + wallSpeed);
+                xVelocity += (xAccel * time) * PLAYER_MOVE_SPEED;
+                if (xVelocity < MAX_PLAYER_VELOCITY * -1) {
+                    xVelocity = MAX_PLAYER_VELOCITY * -1;
+                }
+                else if (xVelocity > MAX_PLAYER_VELOCITY) {
+                    xVelocity = MAX_PLAYER_VELOCITY;
+                }
+                distanceTravelled = (xVelocity / 2) * time;
+
+                playerPos -= distanceTravelled;
+
+                //Checks and reacts to the player hitting the edges of the screen
+                if (playerPos + 50 > getRight()) {
+                    playerPos = getRight() - 50;
+                    xVelocity = 0;
+                }
+                else if (playerPos < getLeft()) {
+                    playerPos = getLeft();
+                    xVelocity = 0;
                 }
 
-                velocity += xAccel * time * PLAYER_MOVE_SPEED;
-                distanceTravelled = (velocity / 2) * time;
+                player.offsetTo(playerPos, getBottom() - 300);
 
-                player.offsetTo(left - distanceTravelled, getBottom() - 300);
+                for (Wall w : walls) {
+                    w.offsetTo(w.left, w.top + wallSpeed);
+                    if (player.hit(w)) {
+                        hitWall = true;
+
+                        Intent i = new Intent(getContext(), MainActivity.class);
+                        getContext().startActivity(i);
+                        //TODO: Insert a fragment or card or something to indicate the user lost, show their score, and ask them if they want to restart. Should kill the canvas and all threads.
+                    }
+                }
+
             }
         });
-        t.run();
-
+        positionsThread.run();
     }
 
     /**
@@ -211,7 +241,10 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
 
     @Override
     public void onSensorChanged(SensorEvent event) {
+        //X-Axis: Currently only works if phone is horizontal w.r.t the horizon. Doesn't work if vertical
         xAccel = event.values[0];
+
+
     }
 
     @Override
@@ -219,12 +252,28 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
 
     }
 
-    //TODO: MIGHT NOT NEED.
-    //IDEA: USE SURFACEDESTROYED METHOD TO STORE VITAL DATA
-//    public void pause() {
-//        if (!thread.isInterrupted()) thread.interrupt();
-//    }
-//    public void resume() {
-//        if (thread.isInterrupted()) thread.start();
-//    }
+    public void resume() {
+        sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL, SensorManager.SENSOR_STATUS_ACCURACY_HIGH);
+    }
+
+    public void pause() {
+        sensorManager.unregisterListener(this);
+
+//        boolean retry = true;
+//        while (retry) {
+//            try {
+//                thread.setRunning(false);
+//                thread.join();
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
+//            retry = false;
+//        }
+        thread.setRunning(false);
+        try {
+            thread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
 }

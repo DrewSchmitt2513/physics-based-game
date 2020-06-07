@@ -21,14 +21,18 @@ public class GameActivity extends Activity {
         setContentView(gameView);
     }
 
-//    @Override
-//    protected void onResume() {
-//        super.onResume();
-//         gameView.resume();
-//    }
-//    @Override
-//    protected void onPause() {
-//        super.onPause();
-//         gameView.pause();
-//    }
+    @Override
+    protected void onResume()
+    {
+        super.onResume();
+        gameView.resume();
+    }
+
+    @Override
+    protected void onStop()
+    {
+        // Unregister the listener
+        gameView.pause();
+        super.onStop();
+    }
 }
