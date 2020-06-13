@@ -18,7 +18,6 @@ public class GameThread extends Thread {
     @Override
     public void run() {
         while (isRunning) {
-            canvas = null;
 
             try {
                 canvas = this.surfaceHolder.lockCanvas();
