@@ -19,25 +19,47 @@ import java.util.concurrent.ThreadLocalRandom;
 
 class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEventListener {
 
+    /**
+     * Maximum speed of the walls. Once they reach this, the game has
+     * reached its peak difficulty, for now...
+     */
     private static final float MAX_WALL_SPEED = 20;
+    /**
+     * Accelerates the speed of the walls over time until the speed
+     * reaches the maximum
+     */
     private static final float WALL_SPEED_ACCELERATOR = .0005f;
-    private static final float PLAYER_MOVE_SPEED = 20;
-    private static final float MAX_PLAYER_VELOCITY = 15; //I put a random number in here... I need to play around with numbers to figure it out. Might not be needed.
-
+    /**
+     * Slows down the observed movement of the Player
+     */
+    private static final float PLAYER_ACCELERATOR = .6f;
+    /**
+     * The maximum speed of the Player when moving left or right
+     */
+    private static final float MAX_PLAYER_SPEED = 20; //I put a random number in here... I need to play around with numbers to figure it out. Might not be needed.
     /**
      * Base speed of all of the Wall objects
      */
     private float wallSpeed = 3;
-
     /**
      * Value used for computing the corrected player
      * move speed to give it a smooth animation
      */
     private float time = 0.667f;
-    private float xVelocity, yVelocity, distanceTravelled, xAccel, yAccel = 0.0f;
-
+    /**
+     * All values used in interpreting the movement of the device
+     * to move the Player left or right (smoothly) across the screen
+     */
+    private float xVelocity, distanceTravelled, xAccel = 0.0f;
+    /**
+     * The location of the left side of the Player. We use it to set
+     * the initial location and also to easily keep track of where
+     * the Player is.
+     */
     private long playerPos;
-
+    /**
+     * The rate at which a wall will spawn on the screen
+     */
     private int rate = 1200;
 
 
@@ -65,6 +87,7 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
         this.postInvalidate();
 
         sensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
+        assert sensorManager != null;
         sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_GAME, SensorManager.SENSOR_STATUS_ACCURACY_HIGH);
 
@@ -186,14 +209,14 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
                     wallSpeed += wallSpeed * WALL_SPEED_ACCELERATOR;
                 }
 
-                xVelocity += (xAccel * time) * PLAYER_MOVE_SPEED;
-                if (xVelocity < MAX_PLAYER_VELOCITY * -1) {
-                    xVelocity = MAX_PLAYER_VELOCITY * -1;
+                xVelocity = xVelocity + (xAccel * time);
+                if (xVelocity < MAX_PLAYER_SPEED * -1) {
+                    xVelocity = MAX_PLAYER_SPEED * -1;
                 }
-                else if (xVelocity > MAX_PLAYER_VELOCITY) {
-                    xVelocity = MAX_PLAYER_VELOCITY;
+                else if (xVelocity > MAX_PLAYER_SPEED) {
+                    xVelocity = MAX_PLAYER_SPEED;
                 }
-                distanceTravelled = (xVelocity / 2) * time;
+                distanceTravelled = (xVelocity*time + (xAccel * (time * time))) * PLAYER_ACCELERATOR;
 
                 playerPos -= distanceTravelled;
 
@@ -217,11 +240,6 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
                         paintPlayer.setColor(Color.BLUE);
 
                         thread.setRunning(false);
-//                        try {
-//                            thread.join();
-//                        } catch (InterruptedException e) {
-//                            e.printStackTrace();
-//                        }
 
                         Intent i = new Intent(getContext(), MainActivity.class);
                         getContext().startActivity(i);
@@ -245,13 +263,15 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        //X-Axis: Currently only works if phone is horizontal w.r.t the horizon. Doesn't work if vertical
+
+        //I'm making the assumption here that the phone will never be held at a 90degree angle
+        //w.r.t. the horizon. In this situation, given that the phone couldn't be held perfectly,
+        //it will switch (sometimes rapidly) between moving left and right. When I observed this,
+        //I became disoriented, confused, and more confused in trying to figure out how to fix it.
+
+
+        //X-Axis: Used to measure horizontal tilt of device
         xAccel = event.values[0];
-
-        //TODO: Do something with this value
-        //Y-Axis
-        yAccel = event.values[1];
-
     }
 
     @Override
