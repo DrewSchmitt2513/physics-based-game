@@ -9,7 +9,6 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
@@ -83,6 +82,8 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
         playerPos = 500;
         player = new Player(playerPos, getBottom() - 300, playerPos + 50, getBottom() - 250);
 
+        paintPlayer.setColor(Color.RED);
+
         final TimerTask task = new TimerTask() {
             @Override
             public void run() {
@@ -111,7 +112,7 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
     }
 
     /**
-     * Ends the thread and therefore the game. It can
+     * Ends the thread and therefore the game. I guess it can
      * take multiple attempts to take down a thread, so
      * we've been advised to put it into this loop from a
      * tutorial.
@@ -142,9 +143,6 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
 
             paintWall.setColor(Color.GREEN);
 
-            if (hitWall) paintPlayer.setColor(Color.BLUE);
-            else paintPlayer.setColor(Color.RED);
-
             if (!hitWall) {
                 updatePositions();
                 canvas.drawRect(player, paintPlayer);
@@ -161,8 +159,6 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
      */
     public void createWall() {
         int i = ThreadLocalRandom.current().nextInt(10000);
-
-        Log.d("RANDOM", i + "");
 
         if (i % 8 == 0 || i % 7 == 0 || i % 3 == 0) {
             i = ThreadLocalRandom.current().nextInt(250, 650);
@@ -218,6 +214,15 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
                     if (player.hit(w)) {
                         hitWall = true;
 
+                        paintPlayer.setColor(Color.BLUE);
+
+                        thread.setRunning(false);
+//                        try {
+//                            thread.join();
+//                        } catch (InterruptedException e) {
+//                            e.printStackTrace();
+//                        }
+
                         Intent i = new Intent(getContext(), MainActivity.class);
                         getContext().startActivity(i);
                         //TODO: Insert a fragment or card or something to indicate the user lost, show their score, and ask them if they want to restart. Should kill the canvas and all threads.
@@ -230,8 +235,7 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
     }
 
     /**
-     * Checks through all of the wall objects to decide whether or not to destroy them
-     * to keep the memory from overflowing
+     * Deletes the first wall in the list to prevent the list from getting too large
      */
     public void destroyWall() {
         if (walls.size() > 8) {
@@ -244,6 +248,9 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
         //X-Axis: Currently only works if phone is horizontal w.r.t the horizon. Doesn't work if vertical
         xAccel = event.values[0];
 
+        //TODO: Do something with this value
+        //Y-Axis
+        yAccel = event.values[1];
 
     }
 
