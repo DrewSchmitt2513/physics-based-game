@@ -12,6 +12,7 @@ import android.hardware.SensorManager;
 import android.util.AttributeSet;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.Timer;
@@ -76,27 +77,12 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
     private Sensor sensor;
     private Timer timer;
 
+    private int score = 0;
+
+    private TextView scoreValue;
+
     private boolean hitWall = false;
 
-    public GameView(Context context) {
-        super(context);
-
-        getHolder().addCallback(this);
-
-        thread = new GameThread(getHolder(), this);
-        setFocusable(true);
-        this.postInvalidate();
-
-        sensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
-        assert sensorManager != null;
-        sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_GAME, SensorManager.SENSOR_STATUS_ACCURACY_HIGH);
-
-        paintPlayer = new Paint();
-        paintWall = new Paint();
-
-        walls = new ArrayList<>();
-    }
     public GameView(Context context, AttributeSet attributeSet) {
         super(context, attributeSet);
 

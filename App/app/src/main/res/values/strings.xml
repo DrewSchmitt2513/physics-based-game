@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">Physics Based Game</string>
     <string name="play_game">Play Game</string>
+    <string name="score_value">Score: 0</string>
 </resources>

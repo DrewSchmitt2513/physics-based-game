@@ -1,7 +1,6 @@
 package com.example.physicsbasedgame;
 
 import android.app.Activity;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.view.Window;
 import android.view.WindowManager;
@@ -10,7 +9,8 @@ import android.widget.TextView;
 public class GameActivity extends Activity {
 
     private GameView gameView;
-    private TextView textView;
+    private TextView scoreValue;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -21,12 +21,20 @@ public class GameActivity extends Activity {
 
         setContentView(R.layout.activity_game);
 
-        gameView = new GameView(this);
+        gameView = findViewById(R.id.game_view);
 
-        textView = findViewById(R.id.txt);
+        scoreValue = findViewById(R.id.score_value);
 
-        textView.setTextColor(Color.WHITE);
     }
+
+//    public void updateScore(final int score) {
+//        runOnUiThread(new Runnable() {
+//            @Override
+//            public void run() {
+//                scoreValue.setText("Score: " + score);
+//            }
+//        });
+//    }
 
     @Override
     protected void onResume()
@@ -38,8 +46,8 @@ public class GameActivity extends Activity {
     @Override
     protected void onStop()
     {
+        super.onStop();
         // Unregister the listener
         gameView.pause();
-        super.onStop();
     }
 }
