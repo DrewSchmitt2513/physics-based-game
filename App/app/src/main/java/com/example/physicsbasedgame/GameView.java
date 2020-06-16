@@ -9,11 +9,14 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.os.AsyncTask;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.widget.TextView;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -38,7 +41,7 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
     /**
      * The maximum speed of the Player when moving left or right
      */
-    private static final float MAX_PLAYER_SPEED = 20; //I put a random number in here... I need to play around with numbers to figure it out. Might not be needed.
+    private static final float MAX_PLAYER_SPEED = 35; //I put a random number in here... I need to play around with numbers to figure it out. Might not be needed.
     /**
      * Base speed of all of the Wall objects
      */
@@ -47,7 +50,7 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
      * Value used for computing the corrected player
      * move speed to give it a smooth animation
      */
-    private float time = 0.667f;
+    private float time = 0.45f;
     /**
      * All values used in interpreting the movement of the device
      * to move the Player left or right (smoothly) across the screen
@@ -64,10 +67,13 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
      */
     private int rate = 1200;
 
+    private float rateMultiplier = 1.2f;
+
 
     private GameThread thread;
     private Thread positionsThread;
     private Thread wallThread;
+    private GameActivity gameActivity;
 
     private Player player;
     private Paint paintPlayer;
@@ -101,6 +107,12 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
         paintWall = new Paint();
 
         walls = new ArrayList<>();
+
+    }
+
+    public void setScoreView(TextView scoreValue, GameActivity gameActivity) {
+        this.scoreValue = scoreValue;
+        this.gameActivity = gameActivity;
     }
 
     @Override
@@ -127,8 +139,17 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
             public void run() {
 
                 //TODO: As the walls speed up, we need to find an efficient way to cancel and reschedule the timer task to make sure that the distance between walls does not grow significantly
-                timer.scheduleAtFixedRate(task, 0,
-                        rate);
+//                timer.scheduleAtFixedRate(task, 0,
+//                        rate);
+
+                if (score == 0) timer.scheduleAtFixedRate(task, 0, rate);
+                else if (score % 10 == 0 && wallSpeed < MAX_WALL_SPEED) {
+                    timer.cancel();
+                    rateMultiplier += .1f;
+                    rate -= 200 * rateMultiplier;
+                    timer.scheduleAtFixedRate(task, 0, rate);
+                    Log.d("RATE", rate + "");
+                }
             }
         };
         wallThread.run();
@@ -198,6 +219,7 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
             Wall w = new Wall(getRight() - i, 0, getRight(), 25);
             walls.add(w);
         }
+        new ScoreAsyncTask(gameActivity, ++score).execute();
     }
 
     /**
@@ -292,21 +314,49 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
     public void pause() {
         sensorManager.unregisterListener(this);
 
-//        boolean retry = true;
-//        while (retry) {
-//            try {
-//                thread.setRunning(false);
-//                thread.join();
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//            }
-//            retry = false;
-//        }
         thread.setRunning(false);
         try {
             thread.join();
         } catch (InterruptedException e) {
             e.printStackTrace();
+        }
+    }
+
+    /**
+     * We only care about onPostExecute because the timer task
+     * handles virtually everything and we only need this class
+     * to gain access to the UI Thread.
+     *
+     * This was the only solution Drew found, but if there is a
+     * better one we are open to updating the implementation.
+     */
+    private static class ScoreAsyncTask extends AsyncTask<String, Integer, Integer> {
+
+        private WeakReference<GameActivity> app;
+        private int score;
+
+        ScoreAsyncTask(GameActivity context, int score) {
+            app = new WeakReference<>(context);
+            this.score = score;
+        }
+
+        protected void onPreExecute() {
+        }
+
+        protected Integer doInBackground(String... strings) {
+            return 0;
+        }
+
+        protected void onProgressUpdate(Integer... values) {
+        }
+
+        protected void onPostExecute(Integer result) {
+            GameActivity gameActivity = app.get();
+            if (gameActivity == null || gameActivity.isFinishing()) return;
+
+            TextView scoreValue = gameActivity.findViewById(R.id.score_value);
+            String s = "Score: " + score;
+            scoreValue.setText(s);
         }
     }
 }

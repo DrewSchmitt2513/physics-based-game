@@ -6,11 +6,14 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.TextView;
 
+import androidx.constraintlayout.widget.ConstraintLayout;
+
 public class GameActivity extends Activity {
 
     private GameView gameView;
     private TextView scoreValue;
 
+    private ConstraintLayout gameLayout;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -21,10 +24,15 @@ public class GameActivity extends Activity {
 
         setContentView(R.layout.activity_game);
 
+        gameLayout = findViewById(R.id.game_layout);
+
+        gameLayout.getBackground();
+
         gameView = findViewById(R.id.game_view);
 
         scoreValue = findViewById(R.id.score_value);
 
+        gameView.setScoreView(scoreValue, this);
     }
 
 //    public void updateScore(final int score) {
