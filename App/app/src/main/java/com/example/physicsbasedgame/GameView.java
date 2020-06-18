@@ -34,14 +34,10 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
      * reaches the maximum
      */
     private static final float WALL_SPEED_ACCELERATOR = .0005f;
-    /**
-     * Slows down the observed movement of the Player
-     */
-    private static final float PLAYER_ACCELERATOR = .6f;
-    /**
-     * The maximum speed of the Player when moving left or right
-     */
-    private static final float MAX_PLAYER_SPEED = 35; //I put a random number in here... I need to play around with numbers to figure it out. Might not be needed.
+//    /**
+//     * The maximum speed of the Player when moving left or right
+//     */
+//    private static final float MAX_PLAYER_VELOCITY = 65; //I put a random number in here... I need to play around with numbers to figure it out. Might not be needed.
     /**
      * Base speed of all of the Wall objects
      */
@@ -50,12 +46,12 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
      * Value used for computing the corrected player
      * move speed to give it a smooth animation
      */
-    private float time = 0.45f;
+    private float time = 0.8f;
     /**
      * All values used in interpreting the movement of the device
      * to move the Player left or right (smoothly) across the screen
      */
-    private float xVelocity, distanceTravelled, xAccel = 0.0f;
+    private float xVelocity, distanceTravelled, xAccel, prevXVelocity = 0.0f;
     /**
      * The location of the left side of the Player. We use it to set
      * the initial location and also to easily keep track of where
@@ -237,14 +233,31 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
                     wallSpeed += wallSpeed * WALL_SPEED_ACCELERATOR;
                 }
 
-                xVelocity = xVelocity + (xAccel * time);
-                if (xVelocity < MAX_PLAYER_SPEED * -1) {
-                    xVelocity = MAX_PLAYER_SPEED * -1;
+                prevXVelocity = xVelocity;
+                xVelocity = (0.5f * xVelocity + (xAccel * time));
+
+                //Probably don't need this
+//                if (xVelocity < MAX_PLAYER_VELOCITY * -1) {
+//                    xVelocity = MAX_PLAYER_VELOCITY * -1;
+//                }
+//                else if (xVelocity > MAX_PLAYER_VELOCITY) {
+//                    xVelocity = MAX_PLAYER_VELOCITY;
+//                }
+
+                /*
+                Smooths over the player movement.
+                First two conditions check for a change of direction,
+                and prevent a jelly-like movement as the velocity catches
+                up with the movement of the phone. They reset the velocity
+                to instantaneously catch it up with the phone's movement.
+                 */
+                if (prevXVelocity < 0 && xVelocity > 0) {
+                    distanceTravelled = 0;
                 }
-                else if (xVelocity > MAX_PLAYER_SPEED) {
-                    xVelocity = MAX_PLAYER_SPEED;
+                else if (prevXVelocity > 0 && xVelocity < 0) {
+                    distanceTravelled = 0;
                 }
-                distanceTravelled = (xVelocity*time + (xAccel * (time * time))) * PLAYER_ACCELERATOR;
+                else distanceTravelled = xVelocity * time + (xAccel * (time * time));
 
                 playerPos -= distanceTravelled;
 
