@@ -2,4 +2,8 @@
     <string name="app_name">Physics Based Game</string>
     <string name="play_game">Play Game</string>
     <string name="score_value">Score: 0</string>
+    <string name="final_score">Your Score: 0</string>
+    <string name="restart">Restart</string>
+    <string name="you_lost">GAME OVER</string>
+    <string name="return_to_home">Return to Home</string>
 </resources>
