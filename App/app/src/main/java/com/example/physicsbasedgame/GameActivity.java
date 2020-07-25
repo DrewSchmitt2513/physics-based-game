@@ -8,7 +8,7 @@ import android.widget.TextView;
 
 import androidx.constraintlayout.widget.ConstraintLayout;
 
-public class GameActivity extends Activity {
+public class GameActivity extends Activity{
 
     private GameView gameView;
     private TextView scoreValue;
@@ -35,15 +35,6 @@ public class GameActivity extends Activity {
         gameView.setScoreView(scoreValue, this);
     }
 
-//    public void updateScore(final int score) {
-//        runOnUiThread(new Runnable() {
-//            @Override
-//            public void run() {
-//                scoreValue.setText("Score: " + score);
-//            }
-//        });
-//    }
-
     @Override
     protected void onResume()
     {
@@ -55,6 +46,13 @@ public class GameActivity extends Activity {
     protected void onStop()
     {
         super.onStop();
+        // Unregister the listener
+        gameView.pause();
+    }
+
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
         // Unregister the listener
         gameView.pause();
     }
