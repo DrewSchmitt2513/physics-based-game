@@ -2,6 +2,7 @@ package com.example.physicsbasedgame;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.TextView;
@@ -32,7 +33,11 @@ public class GameActivity extends Activity{
 
         scoreValue = findViewById(R.id.score_value);
 
+        Log.d("SCORE", scoreValue.toString());
+
         gameView.setScoreView(scoreValue, this);
+
+
     }
 
     @Override
