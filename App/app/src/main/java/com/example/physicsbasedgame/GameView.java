@@ -10,7 +10,6 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.widget.TextView;
@@ -73,8 +72,6 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
     public void setScoreView(TextView scoreValue, GameActivity gameActivity) {
         this.scoreValue = scoreValue;
         this.gameActivity = gameActivity;
-
-        Log.d("SCORE", scoreValue.toString());
     }
 
     @Override
