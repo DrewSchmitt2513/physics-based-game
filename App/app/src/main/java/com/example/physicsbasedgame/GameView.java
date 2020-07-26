@@ -198,6 +198,7 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
     }
 
 
+    //TODO: Move this out of the view
     /**
      * Updates the positions of the walls and the players
      * without drawing them immediately. Called by draw
@@ -266,7 +267,8 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
 
                     }
                     //If the player passes a wall successfully, add 1 to their score.
-                    if (w.top - 2 < player.top && player.top < w.top + 2) {
+                    if (w.top >= player.top - 25 && !w.getPassed()) {
+                        w.setPassedByPlayer(true);
                         new ScoreAsyncTask(gameActivity, ++score).execute();
                     }
                 }
@@ -274,6 +276,8 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
             }
         });
         positionsThread.run();
+
+
     }
 
     @Override

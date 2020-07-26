@@ -11,6 +11,7 @@ public class GameThread extends Thread {
     private final SurfaceHolder surfaceHolder;
     private boolean isRunning;
     private ArrayList<Wall> walls;
+    private Player player;
     private static Canvas canvas;
 
     GameThread(SurfaceHolder surfaceHolder, GameView gameView) {
