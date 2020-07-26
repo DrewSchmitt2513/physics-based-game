@@ -20,7 +20,6 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.ThreadLocalRandom;
 
 class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEventListener {
 
@@ -34,10 +33,6 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
      * reaches the maximum
      */
     private static final float WALL_SPEED_ACCELERATOR = .0005f;
-//    /**
-//     * The maximum speed of the Player when moving left or right
-//     */
-//    private static final float MAX_PLAYER_VELOCITY = 65; //I put a random number in here... I need to play around with numbers to figure it out. Might not be needed.
     /**
      * Base speed of all of the Wall objects
      */
@@ -66,6 +61,10 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
     private float rateMultiplier = 1.2f;
 
 
+    //TODO: Move most of logic onto GameThread, if possible.
+    /**
+     * Controls the game.
+     */
     private GameThread thread;
     private Thread positionsThread;
     private Thread wallThread;
@@ -124,8 +123,8 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
         final TimerTask task = new TimerTask() {
             @Override
             public void run() {
-                createWall();
-                destroyWall();
+                thread.createWalls(getRight());
+                thread.destroyWall();
             }
         };
         timer = new Timer();
@@ -138,14 +137,16 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
 //                timer.scheduleAtFixedRate(task, 0,
 //                        rate);
 
-                if (score == 0) timer.scheduleAtFixedRate(task, 0, rate);
-                else if (score % 10 == 0 && wallSpeed < MAX_WALL_SPEED) {
-                    timer.cancel();
-                    rateMultiplier += .1f;
-                    rate -= 200 * rateMultiplier;
-                    timer.scheduleAtFixedRate(task, 0, rate);
-                    Log.d("RATE", rate + "");
-                }
+                timer.scheduleAtFixedRate(task, 0, 1000);
+
+//                if (score == 0) timer.scheduleAtFixedRate(task, 0, rate);
+//                else if (score % 10 == 0 && wallSpeed < MAX_WALL_SPEED) {
+//                    timer.cancel();
+//                    rateMultiplier += .1f;
+//                    rate -= 200 * rateMultiplier;
+//                    timer.scheduleAtFixedRate(task, 0, rate);
+//                    Log.d("RATE", rate + "");
+//                }
             }
         };
         wallThread.run();
@@ -158,10 +159,7 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
     }
 
     /**
-     * Ends the thread and therefore the game. I guess it can
-     * take multiple attempts to take down a thread, so
-     * we've been advised to put it into this loop from a
-     * tutorial.
+     * Ends the thread and therefore the game.
      *
      * @param holder the surface holder of the canvas
      */
@@ -192,31 +190,13 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
             if (!hitWall) {
                 updatePositions();
                 canvas.drawRect(player, paintPlayer);
-                for (Wall w : walls) {
+                for (Wall w : thread.getWalls()) {
                     canvas.drawRect(w, paintWall);
                 }
             }
         }
     }
 
-    /**
-     * Continuously spawns wall objects with random lengths between 200 and 700 pixels
-     * on randomly selected sides
-     */
-    public void createWall() {
-        int i = ThreadLocalRandom.current().nextInt(10000);
-
-        if (i % 8 == 0 || i % 7 == 0 || i % 3 == 0) {
-            i = ThreadLocalRandom.current().nextInt(250, 650);
-            Wall w = new Wall(0, 0, i, 25);
-            walls.add(w);
-        } else {
-            i = ThreadLocalRandom.current().nextInt(200, 700);
-            Wall w = new Wall(getRight() - i, 0, getRight(), 25);
-            walls.add(w);
-        }
-        new ScoreAsyncTask(gameActivity, ++score).execute();
-    }
 
     /**
      * Updates the positions of the walls and the players
@@ -235,14 +215,6 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
 
                 prevXVelocity = xVelocity;
                 xVelocity = (0.5f * xVelocity + (xAccel * time));
-
-                //Probably don't need this
-//                if (xVelocity < MAX_PLAYER_VELOCITY * -1) {
-//                    xVelocity = MAX_PLAYER_VELOCITY * -1;
-//                }
-//                else if (xVelocity > MAX_PLAYER_VELOCITY) {
-//                    xVelocity = MAX_PLAYER_VELOCITY;
-//                }
 
                 /*
                 Smooths over the player movement.
@@ -273,7 +245,7 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
 
                 player.offsetTo(playerPos, getBottom() - 300);
 
-                for (Wall w : walls) {
+                for (Wall w : thread.getWalls()) {
                     w.offsetTo(w.left, w.top + wallSpeed);
                     if (player.hit(w)) {
                         hitWall = true;
@@ -282,24 +254,26 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
 
                         thread.setRunning(false);
 
-                        Intent i = new Intent(getContext(), MainActivity.class);
+                        timer.cancel();
+
+                        //Spins up the EndActivity
+                        Intent i = new Intent(gameActivity, EndActivity.class);
+                        i.putExtra("FINAL_SCORE", score);
+                        Log.d("SCORE", score + "");
                         getContext().startActivity(i);
-                        //TODO: Insert a fragment or card or something to indicate the user lost, show their score, and ask them if they want to restart. Should kill the canvas and all threads.
+
+                        gameActivity.finish();
+
+                    }
+                    //If the player passes a wall successfully, add 1 to their score.
+                    if (w.top - 2 < player.top && player.top < w.top + 2) {
+                        new ScoreAsyncTask(gameActivity, ++score).execute();
                     }
                 }
 
             }
         });
         positionsThread.run();
-    }
-
-    /**
-     * Deletes the first wall in the list to prevent the list from getting too large
-     */
-    public void destroyWall() {
-        if (walls.size() > 8) {
-            walls.remove(0);
-        }
     }
 
     @Override
@@ -340,7 +314,7 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
      * handles virtually everything and we only need this class
      * to gain access to the UI Thread.
      *
-     * This was the only solution Drew found, but if there is a
+     * This was the only solution I found, but if there is a
      * better one we are open to updating the implementation.
      */
     private static class ScoreAsyncTask extends AsyncTask<String, Integer, Integer> {
