@@ -1,10 +1,11 @@
 package com.example.physicsbasedgame;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Handler;
-import android.os.Looper;
 import android.widget.TextView;
 
-class ObjectHandler {
+class ObjectController {
 
     /**
      * Maximum speed of the walls. Once they reach this, the game has
@@ -49,14 +50,17 @@ class ObjectHandler {
     //TODO: Make an adapter that communicates with the GameView
     private GameView gameView;
 
-    ObjectHandler(GameThread thread, GameView gameView) {
+    ObjectController(GameThread thread, GameView gameView) {
         this.thread = thread;
         this.gameView = gameView;
 
         playerPos = 500;
-        player = new Player(playerPos, gameView.getBottom() - 300, playerPos + 50, gameView.getBottom() - 250);
 
-        handler = new Handler(Looper.getMainLooper());
+        Bitmap bmp = BitmapFactory.decodeResource(gameView.getResources(), R.drawable.player_ship);
+
+        player = new Player(playerPos, gameView.getBottom() - 300, playerPos + 50, gameView.getBottom() - 250, bmp);
+
+        //handler = new Handler(Looper.getMainLooper());
     }
 
     void updatePositions() {
@@ -123,7 +127,4 @@ class ObjectHandler {
     int getScore() {
         return score;
     }
-
-
-    //TODO: Move object manipulation into this class to simplify the GameView
 }

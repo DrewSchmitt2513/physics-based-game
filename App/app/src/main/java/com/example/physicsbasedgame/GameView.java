@@ -34,7 +34,7 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
     private Thread positionsThread;
     private Thread wallThread;
     private GameActivity gameActivity;
-    private ObjectHandler objectHandler;
+    private ObjectController objectController;
 
     private Player player;
     private Paint paintPlayer;
@@ -65,7 +65,7 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
         paintPlayer = new Paint();
         paintWall = new Paint();
 
-        objectHandler = new ObjectHandler(thread, this);
+        objectController = new ObjectController(thread, this);
 
     }
 
@@ -151,9 +151,9 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
 
             if (!hitWall) {
                 //updatePositions();
-                objectHandler.updatePositions();
+                objectController.updatePositions();
 
-                canvas.drawRect(objectHandler.getPlayer(), paintPlayer);
+                canvas.drawBitmap(objectController.getPlayer().getPlayerImage(), objectController.getPlayer().left + 15, objectController.getPlayer().top, null);
                 for (Wall w : thread.getWalls()) {
                     canvas.drawRect(w, paintWall);
                 }
@@ -182,7 +182,7 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
 
         //Spins up the EndActivity
         Intent i = new Intent(gameActivity, EndActivity.class);
-        i.putExtra("FINAL_SCORE", objectHandler.getScore());
+        i.putExtra("FINAL_SCORE", objectController.getScore());
         getContext().startActivity(i);
 
         gameActivity.finish();
@@ -197,7 +197,7 @@ class GameView extends SurfaceView implements SurfaceHolder.Callback, SensorEven
 
 
         //X-Axis: Used to measure horizontal tilt of device
-        if (objectHandler != null) objectHandler.setxAccel(event.values[0]);
+        if (objectController != null) objectController.setxAccel(event.values[0]);
     }
 
     @Override
